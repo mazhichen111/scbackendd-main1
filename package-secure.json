@@ -1,0 +1,52 @@
+{
+  "name": "scbackendd",
+  "version": "1.0.3",
+  "main": "./src/index.js",
+  "scripts": {
+    "start": "node ./src/index.js",
+    "dev": "nodemon ./src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "audit-fix": "npm audit fix",
+    "security-check": "npm audit --audit-level moderate"
+  },
+  "bin": {
+    "scbackendd": "./bin/scbackendd.js"
+  },
+  "author": "XQYWorld",
+  "license": "AGPL-3.0-only",
+  "keywords": [
+    "scratch",
+    "backend",
+    "server",
+    "scbackendd",
+    "visual-programming"
+  ],
+  "type": "module",
+  "private": false,
+  "description": "A software that uses Scratch as a backend development language",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scbackend/scbackendd.git"
+  },
+  "dependencies": {
+    "denque": "^2.1.0",
+    "express": "^5.1.0",
+    "mysql2": "^3.14.1",
+    "sqlite3": "^5.1.7",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  },
+  "optionalDependencies": {
+    "scbackend-vm": "^5.0.300"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "os": [
+    "win32",
+    "darwin",
+    "linux"
+  ]
+}
