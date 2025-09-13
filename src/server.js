@@ -390,6 +390,134 @@ class Server {
         res.status(500).json({ error: 'Internal Server Error' });
       }
     });
+
+    // 运行项目 - 需要认证
+    this.app.post('/api/projects/:id/run', requireAuth, async (req, res) => {
+      const projectId = req.params.id;
+      try {
+        // 检查项目是否存在
+        const project = await this.projects.getProjectById(projectId);
+        if (!project) {
+          return res.status(404).json({ error: 'Project not found' });
+        }
+
+        // 添加Runner（如果不存在）
+        if (!this.manager.runners[projectId]) {
+          this.manager.addRunner(projectId);
+          Logger.info(`Runner created for project: ${projectId}`);
+        }
+
+        // 触发启动事件
+        this.manager.triggerRunnerEvent(projectId, 'PROJECT_START', { projectId });
+        
+        Logger.info(`Project ${projectId} started successfully`);
+        res.status(200).json({ 
+          message: 'Project started successfully',
+          projectId: projectId,
+          status: 'running'
+        });
+      } catch (error) {
+        Logger.error(`Error running project ${projectId}:`, error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
+
+    // 停止项目 - 需要认证
+    this.app.post('/api/projects/:id/stop', requireAuth, async (req, res) => {
+      const projectId = req.params.id;
+      try {
+        // 检查项目是否存在
+        const project = await this.projects.getProjectById(projectId);
+        if (!project) {
+          return res.status(404).json({ error: 'Project not found' });
+        }
+
+        // 检查Runner是否存在
+        if (!this.manager.runners[projectId]) {
+          return res.status(404).json({ error: 'Project is not running' });
+        }
+
+        // 触发停止事件
+        this.manager.triggerRunnerEvent(projectId, 'PROJECT_STOP', { projectId });
+        
+        // 移除Runner
+        this.manager.removeRunner(projectId);
+        
+        Logger.info(`Project ${projectId} stopped successfully`);
+        res.status(200).json({ 
+          message: 'Project stopped successfully',
+          projectId: projectId,
+          status: 'stopped'
+        });
+      } catch (error) {
+        Logger.error(`Error stopping project ${projectId}:`, error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
+
+    // 创建项目 - 需要认证 (新的API路径)
+    this.app.post('/api/projects', requireAuth, async (req, res) => {
+      Logger.info('Responding to create request: /api/projects');
+      const projectData = req.body;
+      try {
+        if (!projectData.name || !projectData.code) {
+          res.status(400).json({ error: 'Project name and code are required' });
+          return;
+        }
+        
+        // 验证项目代码是否为有效JSON
+        try {
+          JSON.parse(projectData.code);
+        } catch (jsonError) {
+          res.status(400).json({ error: 'Project code must be valid JSON' });
+          return;
+        }
+
+        // 转换为旧格式
+        const oldFormatData = {
+          name: projectData.name,
+          body: projectData.code,
+          meta: JSON.stringify({
+            description: projectData.description || '',
+            created_at: new Date().toISOString()
+          })
+        };
+
+        await this.projects.createProject(oldFormatData);
+        Logger.info(`Project created: ${projectData.name}`);
+        res.status(200).json({ 
+          message: 'Project created successfully', 
+          name: projectData.name,
+          id: projectData.name
+        });
+      } catch (error) {
+        Logger.error('Error creating project:', error);
+        if (error.code === 'SQLITE_CONSTRAINT' || error.code === 'ER_DUP_ENTRY') {
+          res.status(409).json({ error: 'Project with this name already exists' });
+        } else {
+          res.status(500).json({ error: 'Internal Server Error' });
+        }
+      }
+    });
+
+    // 删除项目 - 需要认证 (新的API路径)
+    this.app.delete('/api/projects/:id', requireAuth, async (req, res) => {
+      const projectId = req.params.id;
+      try {
+        // 先停止项目（如果正在运行）
+        if (this.manager.runners[projectId]) {
+          this.manager.removeRunner(projectId);
+          Logger.info(`Stopped running project before deletion: ${projectId}`);
+        }
+
+        await this.projects.deleteProject(projectId);
+        Logger.info(`Project deleted: ${projectId}`);
+        res.status(200).json({ message: 'Project deleted successfully' });
+      } catch (error) {
+        Logger.error(`Error deleting project ${projectId}:`, error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
     this.app.use((req, res) => {
       const requestedPath = req.path.replace(/^\/+/, '');
       let localPath = path.resolve(this.rundir, 'public', requestedPath);

@@ -1,3 +1,6 @@
+// 首先加载Worker polyfill以解决Node.js环境中Worker不可用的问题
+import './worker-polyfill.js';
+
 import Manager from './manager.js';
 import Server from './server.js';
 import process from 'process';
